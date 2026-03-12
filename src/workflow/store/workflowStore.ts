@@ -1,31 +1,24 @@
 import { create } from "zustand"
+import type { Node, Edge } from "reactflow"
 import { v4 as uuid } from "uuid"
 
-interface NodeType {
-  id: string
-  position: { x: number; y: number }
-  data: { label: string }
-  type: string
-}
-
-interface EdgeType {
-  id: string
-  source: string
-  target: string
-}
-
 interface WorkflowState {
-  nodes: NodeType[]
-  edges: EdgeType[]
-  addTriggerNode: () => void
+  nodes: Node[]
+  edges: Edge[]
+  selectedNode: Node | null
+
+  addTrigger: () => void
+  addAction: () => void
   addEdge: (source: string, target: string) => void
+  deleteNode: (id: string) => void
+  selectNode: (node: Node) => void
 }
 
-export const useWorkflowStore = create<WorkflowState>((set) => ({
+export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   nodes: [
     {
       id: uuid(),
-      position: { x: 250, y: 200 },
+      position: { x: 250, y: 150 },
       data: { label: "Trigger Node" },
       type: "default",
     },
@@ -33,14 +26,16 @@ export const useWorkflowStore = create<WorkflowState>((set) => ({
 
   edges: [],
 
-  addTriggerNode: () =>
+  selectedNode: null,
+
+  addTrigger: () =>
     set((state) => ({
       nodes: [
         ...state.nodes,
         {
           id: uuid(),
           position: {
-            x: Math.random() * 600,
+            x: Math.random() * 400,
             y: Math.random() * 400,
           },
           data: { label: "Trigger Node" },
@@ -49,40 +44,45 @@ export const useWorkflowStore = create<WorkflowState>((set) => ({
       ],
     })),
 
+  addAction: () =>
+    set((state) => ({
+      nodes: [
+        ...state.nodes,
+        {
+          id: uuid(),
+          position: {
+            x: Math.random() * 400,
+            y: Math.random() * 400,
+          },
+          data: { label: "Action Node" },
+          type: "default",
+        },
+      ],
+    })),
+
   addEdge: (source, target) =>
-    set((state) => {
-      const newEdge = {
-        id: uuid(),
-        source,
-        target,
-      }
+    set((state) => ({
+      edges: [
+        ...state.edges,
+        {
+          id: uuid(),
+          source,
+          target,
+          type: "smoothstep",
+        },
+      ],
+    })),
 
-      const newEdges = [...state.edges, newEdge]
+  deleteNode: (id) =>
+    set((state) => ({
+      nodes: state.nodes.filter((n) => n.id !== id),
+      edges: state.edges.filter(
+        (e) => e.source !== id && e.target !== id
+      ),
+    })),
 
-      // ⭐ Cycle Detection Function
-      const hasCycle = (nodeId: string, visited = new Set<string>()): boolean => {
-        if (visited.has(nodeId)) return true
-
-        visited.add(nodeId)
-
-        const outgoingEdges = newEdges.filter(
-          (edge) => edge.source === nodeId
-        )
-
-        for (const edge of outgoingEdges) {
-          if (hasCycle(edge.target, new Set(visited))) {
-            return true
-          }
-        }
-
-        return false
-      }
-
-      if (hasCycle(source)) {
-        alert("Cycle not allowed ❌")
-        return state
-      }
-
-      return { edges: newEdges }
+  selectNode: (node) =>
+    set({
+      selectedNode: node,
     }),
 }))
